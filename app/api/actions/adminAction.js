@@ -33,3 +33,36 @@ export async function adminCreateUser(formData) {
 
   return { success: true, message: `User ${newUser.email} created!` };
 }
+
+export async function getAllUsers(page = 1, limit = 5) {
+  try {
+    await connectDB();
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination UI
+    const totalUsers = await User.countDocuments();
+    
+    // Fetch paginated users
+    const users = await User.find({})
+      .select("-password")
+      .sort({ createdAt: -1 }) // Newest first
+      .skip(skip)
+      .limit(limit)
+      .lean();
+    
+    return {
+      users: users.map(user => ({
+        id: user._id.toString(),
+        email: user.email,
+        role: user.role,
+        isBlocked: user.isBlocked || false,
+      })),
+      totalPages: Math.ceil(totalUsers / limit),
+      currentPage: page,
+      totalUsers
+    };
+  } catch (error) {
+    console.error("Fetch Users Error:", error);
+    throw new Error("Failed to fetch users");
+  }
+}
